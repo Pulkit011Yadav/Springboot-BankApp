@@ -1,87 +1,21 @@
-@Library('Shared') _
-pipeline {
-    agent any
-    
-    environment{
-        SONAR_HOME = tool "Sonar"
-    }
-    
-    parameters {
-        string(name: 'DOCKER_TAG', defaultValue: '', description: 'Setting docker image for latest push')
-    }
-    
-    stages {
-        
-        stage("Workspace cleanup"){
+pipeline{
+    agent { label 'worker' }
+    stages{
+        stage("code clone"){
             steps{
-                script{
-                    cleanWs()
-                }
+                git url : "https://github.com/Pulkit011Yadav/Springboot-BankApp.git" , branch: "DevOps"
             }
         }
-        
-        stage('Git: Code Checkout') {
-            steps {
-                script{
-                    code_checkout("https://github.com/LondheShubham153/Springboot-BankApp.git","DevOps")
-                }
-            }
-        }
-        
-        stage("Trivy: Filesystem scan"){
+        stage("docker pull"){
             steps{
-                script{
-                    trivy_scan()
-                }
+                sh "docker pull pulkit011yadav/springboot-bankapp:latest"
             }
         }
-
-        stage("OWASP: Dependency check"){
+        stage("deploy"){
             steps{
-                script{
-                    owasp_dependency()
-                }
+                sh "docker compose down || true"
+                sh "docker compose up -d --build"
             }
-        }
-        
-        stage("SonarQube: Code Analysis"){
-            steps{
-                script{
-                    sonarqube_analysis("Sonar","bankapp","bankapp")
-                }
-            }
-        }
-        
-        stage("SonarQube: Code Quality Gates"){
-            steps{
-                script{
-                    sonarqube_code_quality()
-                }
-            }
-        }
-
-        stage("Docker: Build Images"){
-            steps{
-                script{
-                    docker_build("bankapp","${params.DOCKER_TAG}","madhupdevops")
-                }
-            }
-        }
-        
-        stage("Docker: Push to DockerHub"){
-            steps{
-                script{
-                    docker_push("bankapp","${params.DOCKER_TAG}","madhupdevops")
-                }
-            }
-        }
-    }
-    post{
-        success{
-            archiveArtifacts artifacts: '*.xml', followSymlinks: false
-            build job: "BankApp-CD", parameters: [
-                string(name: 'DOCKER_TAG', value: "${params.DOCKER_TAG}")
-            ]
         }
     }
 }
