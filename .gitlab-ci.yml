@@ -1,0 +1,42 @@
+stages:
+  - build
+  - push
+  - pull
+  - deploy
+before_script:
+  - source .env
+  - echo "Loaded IMAGE=$IMAGE and DUSER=$DUSER"
+variables:
+  IMAGE_TAG: latest
+build_job:
+  stage: build
+  script:
+    - docker build -t $IMAGE:$IMAGE_TAG .
+    - echo "build succesfull"
+  tags:
+    - dev
+push_job:
+  stage: push
+  script:
+    - docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_PASSWORD"
+    - docker tag $IMAGE:$IMAGE_TAG $DOCKERHUB_USERNAME/$IMAGE:$IMAGE_TAG
+    - docker push $DOCKERHUB_USERNAME/$IMAGE:$IMAGE_TAG
+    - docker rmi $IMAGE:$IMAGE_TAG || true
+    - docker rmi $DOCKERHUB_USERNAME/$IMAGE:$IMAGE_TAG || true
+    - docker logout
+  tags:
+    - dev
+pull_job:
+  stage: pull
+  script:
+    - docker pull $DOCKERHUB_USERNAME/$IMAGE:$IMAGE_TAG
+  tags:
+    - dev
+deploy_job:
+  stage: deploy
+  script:
+    - docker compose down || true
+    - docker compose up -d 
+    - echo "successfully deployed"
+  tags:
+    - dev
