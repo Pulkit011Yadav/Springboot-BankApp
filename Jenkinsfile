@@ -42,6 +42,7 @@ pipeline{
             steps{
                 sh "docker compose down || true"
                 sh "docker compose up -d --force-recreate"
+                sh "echo 'deploying is successfull'"
             }
         }
     }
